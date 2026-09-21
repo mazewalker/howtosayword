@@ -1,0 +1,20 @@
+services:
+  app:
+    image: nginx:1.27-alpine
+    container_name: howtosayword-full
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - "/home/csiszi/howtosayword/site-full:/usr/share/nginx/html:ro"
+      - "/home/csiszi/howtosayword/out/us:/usr/share/nginx/html/audio/us:ro"
+      - "/home/csiszi/howtosayword/out/uk:/usr/share/nginx/html/audio/uk:ro"
+      - "./nginx.conf:/etc/nginx/conf.d/default.conf:ro"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:80/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
