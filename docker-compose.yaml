@@ -11,9 +11,12 @@ services:
     ports:
       - "80:80"
     volumes:
+      # Audio is mounted TOP-LEVEL (not under /usr/share/nginx/html —
+      # nested ro-bind mountpoints fail under runc: read-only overlay fs).
+      # nginx serves /audio/<accent>/ via `alias /data/audio/`.
       - "/home/csiszi/howtosayword/site-full:/usr/share/nginx/html:ro"
-      - "/home/csiszi/howtosayword/out/us:/usr/share/nginx/html/audio/us:ro"
-      - "/home/csiszi/howtosayword/out/uk:/usr/share/nginx/html/audio/uk:ro"
+      - "/home/csiszi/howtosayword/out/us:/data/audio/us:ro"
+      - "/home/csiszi/howtosayword/out/uk:/data/audio/uk:ro"
       - "subdata:/data/subs"
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:80/"]
