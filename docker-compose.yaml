@@ -1,6 +1,9 @@
 services:
   app:
-    image: nginx:1.27-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile.nginx
+    image: howtosayword-nginx:1.0
     container_name: howtosayword-full
     restart: unless-stopped
     depends_on:
@@ -11,7 +14,6 @@ services:
       - "/home/csiszi/howtosayword/site-full:/usr/share/nginx/html:ro"
       - "/home/csiszi/howtosayword/out/us:/usr/share/nginx/html/audio/us:ro"
       - "/home/csiszi/howtosayword/out/uk:/usr/share/nginx/html/audio/uk:ro"
-      - "./nginx.conf:/etc/nginx/conf.d/default.conf:ro"
       - "subdata:/data/subs"
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:80/"]

@@ -1,0 +1,7 @@
+# App (nginx) image — my server config is baked in so the compose file
+# has NO host-file dependencies for it (Coolify only guarantees the compose
+# file itself at its host-side app dir; a ./nginx.conf bind-mount from the
+# repo was not honored and left the mount as an auto-created empty dir).
+FROM nginx:1.27-alpine
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80
