@@ -8,10 +8,11 @@ services:
     restart: unless-stopped
     depends_on:
       - api
-    # Traefik (coolify-proxy) owns host :80 — do NOT publish it. This port
-    # is Coolify's {{upstreams}} (8080) for the domain reverse proxy.
-    ports:
-      - "8080:80"
+    # No host port publish: coolify-proxy (Traefik) already owns host :80/:8080
+    # and proxies the domain straight to container 80 on the coolify network
+    # (same as every other working app here).
+    expose:
+      - "80"
     volumes:
       # Audio is mounted TOP-LEVEL (not under /usr/share/nginx/html —
       # nested ro-bind mountpoints fail under runc: read-only overlay fs).
