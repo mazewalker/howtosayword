@@ -6,7 +6,7 @@ display-safe local part (kept for the owner's own digest; salted-hash keyed).
 import hashlib, json, os, secrets, threading, time, email.utils, re
 from email.header import decode_header
 
-STORE = os.environ.get("SUB_STORE", "/data/subscriptions.json")
+STORE = os.environ.get("SUB_STORE", "/data/subs/subscriptions.json")
 _lock = threading.Lock()
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", re.I)
 MAX_LIST = 50_000

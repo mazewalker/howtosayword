@@ -1,21 +1,38 @@
+# howtosayword — full 61k-word edition (nginx + FastAPI subscribe/wotd API)
+#
+# Routing: coolify-proxy (Traefik) sits on the shared `coolify` docker
+# network and discovers app containers by their traefik.* labels. This
+# dockercompose build never gets Coolify's label injection, so we declare
+# BOTH things ourselves here, exactly as every working app's generated
+# artifact does:
+#   1. attach to the EXISTING shared `coolify` net (external: true, name=coolify)
+#   2. the traefik router/service labels + caddy_* fallback labels
+# Do NOT remove the top-level networks block or the labels without re-testing
+# the domain — without them the edge returns "no available server".
+#
+# Audio is mounted TOP-LEVEL (not under the read-only webroot) because runc
+# cannot create mountpoints inside a read-only overlay filesystem.
+
 services:
   app:
     build:
       context: .
       dockerfile: Dockerfile.nginx
     image: howtosayword-nginx:1.0
-    container_name: howtosayword-full
+    container_name: howtosayword-app
     restart: unless-stopped
     depends_on:
       - api
-    # No host port publish: coolify-proxy (Traefik) already owns host :80/:8080
-    # and proxies the domain straight to container 80 on the coolify network
-    # (same as every other working app here).
     expose:
       - "80"
+    ports:
+      - "80:80"
+    networks:
+      coolify:
+        aliases:
+          - howtosayword-app
     volumes:
-      # Audio is mounted TOP-LEVEL (not under /usr/share/nginx/html —
-      # nested ro-bind mountpoints fail under runc: read-only overlay fs).
+      # Audio mounted top-level (nested ro-mountpoints fail under runc).
       # nginx serves /audio/<accent>/ via `alias /data/audio/`.
       - "/home/csiszi/howtosayword/site-full:/usr/share/nginx/html:ro"
       - "/home/csiszi/howtosayword/out/us:/data/audio/us:ro"
@@ -26,19 +43,57 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+    labels:
+      - traefik.enable=true
+      - traefik.http.middlewares.hsw-gzip.compress=true
+      - traefik.http.middlewares.hsw-https.redirectscheme.scheme=https
+      - traefik.http.routers.hsw-http-0.entrypoints=http
+      - traefik.http.routers.hsw-http-0.middlewares=hsw-https
+      - 'traefik.http.routers.hsw-http-0.rule=Host(`howtosayword.neurocircuit.xyz`)||Host(`www.howtosayword.neurocircuit.xyz`)'
+      - traefik.http.routers.hsw-http-0.service=hsw-web
+      - traefik.http.routers.hsw-https-0.entrypoints=https
+      - traefik.http.routers.hsw-https-0.middlewares=hsw-gzip
+      - 'traefik.http.routers.hsw-https-0.rule=Host(`howtosayword.neurocircuit.xyz`)||Host(`www.howtosayword.neurocircuit.xyz`)'
+      - traefik.http.routers.hsw-https-0.service=hsw-web
+      - traefik.http.routers.hsw-https-0.tls=true
+      - traefik.http.routers.hsw-https-0.tls.certresolver=letsencrypt
+      - traefik.http.services.hsw-web.loadbalancer.server.port=80
+      - traefik.http.services.hsw-web.loadbalancer.serverstrategies=roundrobin
+      # caddy fallback (harmless; coolify-proxy is Traefik but these match the
+      # working apps exactly so any proxy type routes it)
+      - 'caddy_0.encode=zstd gzip'
+      - 'caddy_0.handle_path.0_reverse_proxy={{upstreams 80}}'
+      - 'caddy_0.handle_path=/*'
+      - caddy_0.header=-Server
+      - 'caddy_0.try_files={path} /index.html /index.php'
+      - 'caddy_0=https://howtosayword.neurocircuit.xyz'
+      - 'caddy_1.encode=zstd gzip'
+      - 'caddy_1.handle_path.1_reverse_proxy={{upstreams 80}}'
+      - 'caddy_1.handle_path=/*'
+      - caddy_1.header=-Server
+      - 'caddy_1.try_files={path} /index.html /index.php'
+      - 'caddy_1=https://www.howtosayword.neurocircuit.xyz'
+      - caddy_ingress_network=coolify
     logging:
       driver: json-file
       options: {max-size: "10m", max-file: "3"}
 
   api:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     image: howtosayword-api:1.0
     container_name: howtosayword-api
     restart: unless-stopped
+    expose:
+      - "8000"
+    networks:
+      coolify:
+        aliases:
+          - howtosayword-api
     environment:
       HTSW_BASE: "https://howtosayword.neurocircuit.xyz"
       SUB_STORE: "/data/subs/subscriptions.json"
-      # rotate me if you ever suspect leak: openssl rand -hex 24
       SUB_OWNER_KEY: "a3f1c9d8e7b6450fa8c2d1e0f9b7a6c5d4e3f2a1b0c9d8e7"
     volumes:
       - "subdata:/data/subs"
@@ -51,6 +106,14 @@ services:
     logging:
       driver: json-file
       options: {max-size: "10m", max-file: "3"}
+
+# THE critical bit: attach to the EXISTING shared proxy network, do not
+# create a new one. `external: true` + explicit name = the same net
+# coolify-proxy is on (all working apps share it).
+networks:
+  coolify:
+    name: coolify
+    external: true
 
 volumes:
   subdata:
