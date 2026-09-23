@@ -25,8 +25,6 @@ services:
       - api
     expose:
       - "80"
-    ports:
-      - "80:80"
     networks:
       coolify:
         aliases:
