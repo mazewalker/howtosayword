@@ -57,7 +57,7 @@ services:
         aliases:
           - howtosayword-api
     environment:
-      HTSW_BASE: "https://howtosayword.neurocircuit.xyz"
+      HTSW_BASE: "https://howtosayword.com"
       SUB_STORE: "/data/subs/subscriptions.json"
       SUB_OWNER_KEY: "a3f1c9d8e7b6450fa8c2d1e0f9b7a6c5d4e3f2a1b0c9d8e7"
     volumes:
